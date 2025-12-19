@@ -26,34 +26,50 @@ const QRGenerator = () => {
   }, [url]);
 
   const handleDownload = useCallback(() => {
-    if (!qrRef.current) return;
+    if (!generatedUrl) return;
 
-    const svg = qrRef.current.querySelector("svg");
-    if (!svg) return;
+    // Crear un contenedor temporal para el QR en blanco y negro
+    const tempContainer = document.createElement("div");
+    tempContainer.style.position = "absolute";
+    tempContainer.style.left = "-9999px";
+    document.body.appendChild(tempContainer);
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
+    // Crear el QR en blanco y negro para descarga
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = `
+      <svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+        <rect width="400" height="400" fill="#FFFFFF"/>
+      </svg>
+    `;
+    tempContainer.appendChild(tempDiv);
 
-    img.onload = () => {
-      canvas.width = 400;
-      canvas.height = 400;
-      if (ctx) {
-        ctx.fillStyle = "#0a0f1a";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, 400, 400);
-      }
-      const pngFile = canvas.toDataURL("image/png");
-      const downloadLink = document.createElement("a");
-      downloadLink.download = "qr-code.png";
-      downloadLink.href = pngFile;
-      downloadLink.click();
-      toast.success("¡QR descargado!");
-    };
+    // Generar el QR code usando qrcode.react manualmente
+    import('qrcode').then((QRCode) => {
+      QRCode.default.toCanvas(generatedUrl, {
+        errorCorrectionLevel: 'H',
+        width: 400,
+        margin: 2,
+        color: {
+          dark: '#000000',  // Negro
+          light: '#FFFFFF'  // Blanco
+        }
+      }, (err: Error | null | undefined, canvas: HTMLCanvasElement) => {
+        if (err) {
+          toast.error("Error al generar el QR");
+          document.body.removeChild(tempContainer);
+          return;
+        }
 
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-  }, []);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = "qr-code.png";
+        downloadLink.href = pngFile;
+        downloadLink.click();
+        toast.success("¡QR descargado!");
+        document.body.removeChild(tempContainer);
+      });
+    });
+  }, [generatedUrl]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -69,7 +85,7 @@ const QRGenerator = () => {
           <Link2 className="w-4 h-4" />
           <span className="text-sm font-medium">Ingresa tu enlace</span>
         </div>
-        
+
         <div className="relative">
           <Input
             type="text"
@@ -81,7 +97,7 @@ const QRGenerator = () => {
           />
         </div>
 
-        <Button 
+        <Button
           onClick={handleGenerate}
           className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:shadow-lg hover:shadow-primary/25"
         >
@@ -103,7 +119,7 @@ const QRGenerator = () => {
             </p>
           </div>
 
-          <div 
+          <div
             ref={qrRef}
             className="flex justify-center animate-float"
           >
@@ -119,7 +135,7 @@ const QRGenerator = () => {
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={handleDownload}
             variant="outline"
             className="w-full h-12 text-base font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all duration-300"
