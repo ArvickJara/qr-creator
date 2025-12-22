@@ -10,6 +10,19 @@ const QRGenerator = () => {
   const [generatedUrl, setGeneratedUrl] = useState("");
   const qrRef = useRef<HTMLDivElement>(null);
 
+  // Calcular tamaño del QR basado en la longitud de la URL
+  const getQRSize = useCallback((urlLength: number) => {
+    // URLs más largas necesitan más módulos, así que aumentamos el tamaño
+    // para mantener el tamaño de cada cuadrito constante
+    if (urlLength < 50) return 200;
+    if (urlLength < 100) return 240;
+    if (urlLength < 150) return 280;
+    if (urlLength < 200) return 320;
+    return 360;
+  }, []);
+
+  const qrSize = generatedUrl ? getQRSize(generatedUrl.length) : 200;
+
   const handleGenerate = useCallback(() => {
     if (!url.trim()) {
       toast.error("Por favor, ingresa un enlace válido");
@@ -43,12 +56,15 @@ const QRGenerator = () => {
     `;
     tempContainer.appendChild(tempDiv);
 
+    // Calcular tamaño de descarga (más grande para mejor calidad)
+    const downloadSize = getQRSize(generatedUrl.length) * 2.5;
+
     // Generar el QR code usando qrcode.react manualmente
     import('qrcode').then((QRCode) => {
       QRCode.default.toCanvas(generatedUrl, {
-        errorCorrectionLevel: 'H',
-        width: 400,
-        margin: 2,
+        errorCorrectionLevel: 'L',
+        width: downloadSize,
+        margin: 4,
         color: {
           dark: '#000000',  // Negro
           light: '#FFFFFF'  // Blanco
@@ -69,7 +85,7 @@ const QRGenerator = () => {
         document.body.removeChild(tempContainer);
       });
     });
-  }, [generatedUrl]);
+  }, [generatedUrl, getQRSize]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -126,11 +142,11 @@ const QRGenerator = () => {
             <div className="p-6 bg-secondary/30 rounded-2xl glow-border">
               <QRCodeSVG
                 value={generatedUrl}
-                size={200}
+                size={qrSize}
                 bgColor="transparent"
                 fgColor="hsl(186, 100%, 50%)"
-                level="H"
-                includeMargin={false}
+                level="L"
+                includeMargin={true}
               />
             </div>
           </div>
